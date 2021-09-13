@@ -1,0 +1,87 @@
+# Adaptation of independent baselines models to use plugin estimators for mu
+# Howard Thom 20-August-2019
+# The closest matching RCT must be matched externally and the 'mu' taken from an independent baselines model
+
+# V2 uses separate standard deviation for random effecs models in connected and disconnected portions
+# V3 switches to txt file for random effects in order to use the dnorm(,)I(,) syntax
+# Also changed priors from N(0,0.0001) to N(0,0.01) and Unif(0,5) to Unif(0,2)
+
+# Extra data are mu.plugin[] and matched.rct[]. The latter is an indicator for the matched RCT
+# Data are same as TSD format: ns, nt, na, r, n, t
+# The data on disconnected networks are (as in standard TSD):
+# ns.disc, nt.disc, na.disc, r.disc, n.disc, t.disc
+# x.disc is matrix of covariates for disconnected RCTs.
+
+# sd.connected.mean and sd.connected.tau are the mean and precision of the sd in the connected components.
+# These are used as informative priors on sd.disc in the random effects models
+
+
+
+# Binomial likelihood, logit link 
+# Simultaneous baseline and treat effects model for multi-arm trials 
+#model.plugin.disc.re<-function()
+model{ # *** PROGRAM STARTS 
+	# Model for connected RCTs is as in independent baselines model
+	for(i in 1:ns){ # LOOP THROUGH STUDIES 
+		w[i,1] <- 0 # adjustment for multi-arm trials is zero for control arm 
+		delta[i,1] <- 0 # treatment effect is zero for control arm 
+		mu[i] ~ dnorm(0,0.01)  # model for trial baselines re treatment 1 
+		for (k in 1:na[i]) { # LOOP THROUGH ARMS 
+			r[i,k] ~ dbin(p[i,k],n[i,k]) # binomial likelihood 
+			logit(p[i,k]) <- mu[i] + delta[i,k] # model for linear predictor 
+			rhat[i,k] <- p[i,k] * n[i,k] # expected value of the numerators 
+			dev.NA[i,k] <- 2 * (r[i,k] * (log(r[i,k])-log(rhat[i,k])) #Deviance contribution including NAs 
+			+ (n[i,k]-r[i,k]) * (log(n[i,k]-r[i,k]) - log(n[i,k]-rhat[i,k]))) 
+			dev[i,k] <- dev.NA[i,k]*(1-equals(n[i,1],1)) #Deviance contribution with correction for NAs 
+		} 
+		resdev.rct[i] <- sum(dev[i,1:na[i]]) # summed residual deviance contribution for this trial 
+		for (k in 2:na[i]) { # LOOP THROUGH ARMS 
+			delta[i,k] ~ dnorm(md[i,k],taud[i,k]) # trial-specific LOR distributions 
+			md[i,k] <- d[t[i,k]] - d[t[i,1]] + sw[i,k] # mean of LOR distributions (with multi-arm trial correction) 
+			taud[i,k] <- tau *2*(k-1)/k # precision of LOR distributions (with multi-arm trial correction) 
+			w[i,k] <- (delta[i,k] - d[t[i,k]] + d[t[i,1]]) # adjustment for multi-arm RCTs 
+			sw[i,k] <- sum(w[i,1:k-1])/(k-1) # cumulative adjustment for multi-arm trials 
+		} 
+	} 
+
+	# Disconnected RCTs
+	for(i in 1:ns.disc){ # LOOP THROUGH STUDIES 
+		w.disc[i,1] <- 0 # adjustment for multi-arm trials is zero for control arm 
+		delta.disc[i,1] <- 0 # treatment effect is zero for control arm 
+		mu.plugin[i]~dnorm(mu.plugin.mean[i],mu.plugin.prec[i])
+
+		for (k in 1:na.disc[i]) { # LOOP THROUGH ARMS 
+			r.disc[i,k] ~ dbin(p.disc[i,k],n.disc[i,k]) # binomial likelihood 
+			logit(p.disc[i,k]) <- mu.plugin[i] + delta.disc[i,k] # model for linear predictor 
+			rhat.disc[i,k] <- p.disc[i,k] * n.disc[i,k] # expected value of the numerators 
+			dev.disc.NA[i,k] <- 2 * (r.disc[i,k] * (log(r.disc[i,k])-log(rhat.disc[i,k])) #Deviance contribution including NAs 
+			+ (n.disc[i,k]-r.disc[i,k]) * (log(n.disc[i,k]-r.disc[i,k]) - log(n.disc[i,k]-rhat.disc[i,k]))) 
+			dev.disc[i,k] <- dev.disc.NA[i,k]*(1-equals(n.disc[i,1],1)) #Deviance contribution with correction for NAs 
+		} 
+		resdev.disc[i] <- sum(dev.disc[i,1:na.disc[i]]) # summed residual deviance contribution for this trial 
+
+		# Multi-arm correction for disconnected RCTs
+		# Treatment effects are relative to the baseline of the matched RCT
+		md.disc[i,1] <- d[t.disc[i,1]] - d[t[matched.rct[i],1]]
+
+		for (k in 2:na.disc[i]) { # LOOP THROUGH ARMS 
+			delta.disc[i,k] ~ dnorm(md.disc[i,k],taud.disc[i,k]) # trial-specific LOR distributions 
+			md.disc[i,k] <- d[t.disc[i,k]] - d[t[matched.rct[i],1]] + sw.disc[i,k] # mean of LOR distributions (with multi-arm trial correction) 
+			taud.disc[i,k] <- tau.disc *2*k/(k+1) # precision of LOR distributions (with multi-arm trial correction) 
+			w.disc[i,k] <- (delta.disc[i,k] - d[t.disc[i,k]] - d[t[matched.rct[i],1]]) # adjustment for multi-arm RCTs 
+			sw.disc[i,k] <- sum(w.disc[i,1:k-1])/k # cumulative adjustment for multi-arm trials 
+		} 
+	} # End loop over disconnected RCTs
+	totresdev.disc<-sum(resdev.disc[])
+	totresdev.rct<-sum(resdev.rct[])
+
+	totresdev <-  totresdev.rct + totresdev.disc # Total Residual Deviance 
+	d[1]<-0 # treatment effect is zero for reference treatment 
+	for (k in 2:nt){ d[k] ~ dnorm(0,.01) } # vague priors for treatment effects 
+	sd ~ dunif(0,2) # vague prior for between-trial SD 
+	tau <- pow(sd,-2) # between-trial precision = (1/between-trial variance) 
+
+	# Priors for disconnected RCT
+	sd.disc ~ dnorm(sd.connected.mean, sd.connected.tau)I(0,) # Informative prior based on connected SD
+	tau.disc <- pow(sd.disc,-2) # between-trial precision = (1/between-trial variance) 
+}
