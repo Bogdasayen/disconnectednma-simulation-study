@@ -114,8 +114,9 @@ for(i.scenario in 1:n.scenarios)
 })# End system time
 
 # If not running the simulation afresh, can use results of previous run
-load(file=paste0(baseline.directory,"/code/simulation.results.",n.simulations,".v2.rda"))
-load(file=paste0(baseline.directory,"/code/simulation.results.re.",n.simulations,".v2.rda"))
+load(file=paste0("results/simulation.results.fe.",n.simulations,".", n.patients, "patients.v3.rda"))
+load(file=paste0("results/simulation.results.re.",n.simulations,".", n.patients, "patients.v3.rda"))
+
 
 # Summarise each scenario
 if(fixed.effects) {
@@ -173,12 +174,12 @@ if(fixed.effects) {
   
   plot.simulation.results(bias.mean.connected,bias.mean.disconnected,bias.ll.connected, bias.ll.disconnected, bias.ul.connected, bias.ul.disconnected,
                                coverage.mean.connected,coverage.mean.disconnected,coverage.ll.connected, coverage.ll.disconnected, coverage.ul.connected, coverage.ul.disconnected,
-                          start.of.filename = paste0(baseline.directory,"/results/plots/simulation.fe.",n.simulations, ".", n.patients, "patients"))
+                          start.of.filename = paste0("/results/plots/simulation.fe.",n.simulations, ".", n.patients, "patients"))
   
   save(bias.summary.connected,bias.summary.disconnected,coverage.summary.connected,coverage.summary.disconnected,bias.tables,coverage.tables,
        bias.mean.connected,bias.mean.disconnected,bias.ll.connected, bias.ll.disconnected, bias.ul.connected, bias.ul.disconnected,
        coverage.mean.connected,coverage.mean.disconnected,coverage.ll.connected, coverage.ll.disconnected, coverage.ul.connected, coverage.ul.disconnected,
-       file=paste0(baseline.directory,"/code/simulation.results.fe.",n.simulations,".", n.patients, "patients.v3.rda"))
+       file=paste0("results/simulation.results.fe.",n.simulations,".", n.patients, "patients.v3.rda"))
   
   
   wb <- createWorkbook()
@@ -191,7 +192,7 @@ if(fixed.effects) {
   writeData(wb, "Coverage conn", cbind(rownames(coverage.summary.connected), coverage.summary.connected), startRow = 1, startCol = 1)
   addWorksheet(wb, "Coverage disc")
   writeData(wb, "Coverage disc", coverage.summary.disconnected, startRow = 1, startCol = 2)
-  saveWorkbook(wb, file = paste0(baseline.directory,"/results/simulation.results.fe.",n.simulations,".", n.patients, "patients.v3.xlsx"), overwrite = TRUE)    
+  saveWorkbook(wb, file = paste0("/results/simulation.results.fe.",n.simulations,".", n.patients, "patients.v3.xlsx"), overwrite = TRUE)    
 
 }
 
@@ -248,16 +249,27 @@ if(random.effects) {
     
   }
   
-  plot.simulation.results(bias.mean.connected.re,bias.mean.disconnected.re,bias.ll.connected.re, bias.ll.disconnected.re, bias.ul.connected.re, bias.ul.disconnected.re,
-                                 coverage.mean.connected.re,coverage.mean.disconnected.re,coverage.ll.connected.re, coverage.ll.disconnected.re, coverage.ul.connected.re, coverage.ul.disconnected.re,
-                          start.of.filename = paste0(baseline.directory,"/results/plots/simulation.re.",n.simulations, ".", n.patients, "patients"))
+  plot.simulation.results(bias.mean.connected = bias.mean.connected.re,
+                          bias.mean.disconnected = bias.mean.disconnected.re,
+                          bias.ll.connected = bias.ll.connected.re, 
+                          bias.ll.disconnected = bias.ll.disconnected.re, 
+                          bias.ul.connected = bias.ul.connected.re, 
+                          bias.ul.disconnected = bias.ul.disconnected.re,
+                          coverage.mean.connected = coverage.mean.connected.re,
+                          coverage.mean.disconnected = coverage.mean.disconnected.re,
+                          coverage.ll.connected = coverage.ll.connected.re, 
+                          coverage.ll.disconnected = coverage.ll.disconnected.re, 
+                          coverage.ul.connected = coverage.ul.connected.re, 
+                          coverage.ul.disconnected = coverage.ul.disconnected.re,
+                          start.of.filename = paste0("results/plots/simulation.re.",n.simulations, ".", n.patients, "patients"))
   
                           
   
   save(bias.summary.connected.re,bias.summary.disconnected.re,coverage.summary.connected.re,coverage.summary.disconnected.re,bias.tables.re,coverage.tables.re,
        bias.mean.connected.re,bias.mean.disconnected.re,bias.ll.connected.re, bias.ll.disconnected.re, bias.ul.connected.re, bias.ul.disconnected.re,
        coverage.mean.connected.re,coverage.mean.disconnected.re,coverage.ll.connected.re, coverage.ll.disconnected.re, coverage.ul.connected.re, coverage.ul.disconnected.re,
-       file=paste0(baseline.directory,"/code/simulation.results.re.",n.simulations,".", n.patients, "patients.v3.rda"))
+       file=paste0("results/simulation.results.re.",n.simulations,".", n.patients, "patients.v3.rda"))
+  
   
   wb <- createWorkbook()
   
@@ -269,7 +281,7 @@ if(random.effects) {
   writeData(wb, "Coverage conn", cbind(rownames(coverage.summary.connected.re), coverage.summary.connected.re), startRow = 1, startCol = 1)
   addWorksheet(wb, "Coverage disc")
   writeData(wb, "Coverage disc", coverage.summary.disconnected.re, startRow = 1, startCol = 2)
-  saveWorkbook(wb, file = paste0(baseline.directory,"/results/simulation.results.re.",n.simulations,".", n.patients, "patients.v3.xlsx"), overwrite = TRUE)    
+  saveWorkbook(wb, file = paste0("/results/simulation.results.re.",n.simulations,".", n.patients, "patients.v3.xlsx"), overwrite = TRUE)    
   
   
   
